@@ -1,5 +1,5 @@
 import numpy as np
-from numpy import sqrt, exp, array, arange
+from numpy import sqrt, exp, array, arange, log
 import matplotlib.pyplot as plt
 
 from scipy.sparse import csc_matrix
@@ -20,8 +20,8 @@ def blackScholesPricer(S, K, r, sigma, T, type="call"):
 
     assert type in ["call", "put"]
 
-    d_1 = (np.log(S / K) + (r + sigma ** 2 / 2) * T) / (sigma * np.sqrt(T))
-    d_2 = (np.log(S / K) + (r - sigma ** 2 / 2) * T) / (sigma * np.sqrt(T))
+    d_1 = (log(S / K) + (r + sigma ** 2 / 2) * T) / (sigma * sqrt(T))
+    d_2 = (log(S / K) + (r - sigma ** 2 / 2) * T) / (sigma * sqrt(T))
 
     if type == "call":
         option_price = S * norm.cdf(d_1) - K * exp(-r * T) * norm.cdf(d_2)
@@ -29,6 +29,31 @@ def blackScholesPricer(S, K, r, sigma, T, type="call"):
         option_price = K * exp(-r * T) * norm.cdf(-d_2) - S * norm.cdf(-d_1)
 
     return option_price
+
+
+# pricer for geometric Asian options (without early exercise) using exact analytical expressions
+def asianOptionPricerExact(S, K, r, sigma, T, type="call"):
+    """
+    S       : stock price
+    K       : strike price
+    r       : risk-free interest rate
+    sigma   : volatility
+    T       : time to expiry
+    """
+
+    assert type in ["call", "put"]
+
+    sigma_G = sigma / sqrt(3)
+    b = 0.5 * (r - 0.5 * sigma_G ** 2)
+    d_1 = (log(S / K) + (b + 0.5 * sigma_G ** 2) * T) / (sigma_G * sqrt(T))
+    d_2 = (log(S / K) + (b - 0.5 * sigma_G ** 2) * T) / (sigma_G * sqrt(T))
+
+    if type == "call":
+        option_price = S * exp((b-r) * T) * norm.cdf(d_1) - K * exp(-r * T) * norm.cdf(d_2)
+    elif type == "put":
+        option_price = K * exp(-r * T) * norm.cdf(-d_2) - S * exp((b-r) * T) * norm.cdf(-d_1)
+
+    return option_price    
 
 
 # Cox-Ross-Rubinstein (CRR) Binomial tree pricer
@@ -192,8 +217,9 @@ def finiteDifferencesPricer(K, r, sigma, q, S_max, M, T, N, type="call", style="
     return arange(0, M+1) * deltaS, grid[0, :]
 
 
-# use Monte Carlo methods for pricing the option
-def monteCarloPricer(K, r, sigma, q):
+def monteCarloPricer(S_0, K, r, sigma, q, T, N, num_trials, style="european", type="put", method="default"):
+    """
+    """
 
     # sample a path for S(t) in a risk neutral world
     # calculate the payoff from the derivative
@@ -201,6 +227,39 @@ def monteCarloPricer(K, r, sigma, q):
     # calculate the mean of sample payoffs to get estimate of the expected payoff
     # discount expected payoff at the risk free rate
 
-    
+    assert type in ["call", "put"]
+    assert style in ["european", "american", "asian"]
+    assert method in ["default", "antithetic", "importance"]
 
-    return
+    deltaT = T / N
+    deltaT_sqrt = np.sqrt(T/N)
+    T_sqrt = np.sqrt(T)
+
+    # pricing func
+    pricing_func = lambda eps: S_0 * exp((r - sigma ** 2 / 2) * T + sigma * T_sqrt * eps)
+
+    # volatility and interest rates are constant
+    rng = np.random.default_rng(300)
+    variates = rng.standard_normal(num_trials)
+
+    if type == "put":
+
+        if method == "default":
+            sampled_payoffs = np.maximum(K - pricing_func(variates), 0)
+
+        elif method == "antithetic":
+            f1 = np.maximum(K - pricing_func(variates), 0)
+            f2 = np.maximum(K - pricing_func(-variates), 0)
+            sampled_payoffs = (f1 + f2) / 2
+
+    elif type == "call":
+
+        if method == "default":
+            sampled_payoffs = np.maximum(pricing_func(variates) - K, 0)
+
+        elif method == "antithetic":
+            f1 = np.maximum(pricing_func(variates) - K, 0)
+            f2 = np.maximum(pricing_func(-variates) - K, 0)
+            sampled_payoffs = (f1 + f2) / 2
+
+    return exp(-r*T) * np.mean(sampled_payoffs), np.std(exp(-r*T) * sampled_payoffs)
