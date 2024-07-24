@@ -11,6 +11,8 @@ from scipy.interpolate import CubicSpline
 # Black-Scholes analytical pricing formula for european options
 def blackScholesPricer(S, K, r, sigma, T, type="call"):
     """
+    Pricer for european options using the classic Black-Scholes-Merton formulas
+
     S       : stock price
     K       : strike price
     r       : risk-free interest rate
@@ -31,9 +33,10 @@ def blackScholesPricer(S, K, r, sigma, T, type="call"):
     return option_price
 
 
-# pricer for geometric Asian options (without early exercise) using exact analytical expressions
 def asianOptionPricerExact(S, K, r, sigma, T, type="call"):
     """
+    Pricer for geometric Asian options (without early exercise) using exact analytical expressions
+
     S       : stock price
     K       : strike price
     r       : risk-free interest rate
@@ -56,9 +59,10 @@ def asianOptionPricerExact(S, K, r, sigma, T, type="call"):
     return option_price    
 
 
-# Cox-Ross-Rubinstein (CRR) Binomial tree pricer
 def binomialPricer(S, K, r, sigma, T, q, n, type="call", style="european", visualize=False):
     """
+    Cox-Ross-Rubinstein (CRR) Binomial tree pricer
+
     S       : initial stock price
     K       : strike price
     r       : risk-free interest rate
@@ -121,15 +125,22 @@ def binomialPricer(S, K, r, sigma, T, q, n, type="call", style="european", visua
 
 
 def trinomialPricer(S, K, r, sigma, T, q, n, type="call", style="european", visualize=False):
+    """
+    Implement trinomial tree pricer, to compare with explicit finite differences method.
+    Learn about recombination in the tree?
 
+    """
     
+
 
     return
 
 
 # use finite differences to solve the Black-Scholes PDE to obtain option price
-def finiteDifferencesPricer(K, r, sigma, q, S_max, M, T, N, type="call", style="european"):
+def finiteDifferencesPricer(K, r, sigma, q, S_max, M, T, N, type="call", style="european", version="implicit", use_log_price=False):
     """
+    Finite differences pricer (implicit version)
+
     K : strike price
     r : risk-free interest rate
     sigma : volatility
@@ -140,14 +151,15 @@ def finiteDifferencesPricer(K, r, sigma, q, S_max, M, T, N, type="call", style="
     M : number of grid-points in stock price
     """
 
+    assert version in ["implicit", "explicit", "crank_nicolson"]
     assert style in ["european", "american"]
     assert type in ["call", "put"]
 
     deltaT = T / N
     deltaS = S_max / M
 
-    # stock price increases from top-to-bottom: 0, deltaS, 2 * deltaS, ..., (M-1) * deltaS, S_max
-    # time increases from left-to-right: 0, deltaT, 2 * deltaT, ..., (N-1) * deltaT, T
+    # stock price increases from left-to-right: 0, deltaS, 2 * deltaS, ..., (M-1) * deltaS, S_max
+    # time increases from top-to-bottom: 0, deltaT, 2 * deltaT, ..., (N-1) * deltaT, T
     grid = np.zeros((N+1, M+1)) # grid is (N + 1) x (M + 1): time on vertical, stock price on horizontal
 
     # helper arrays
@@ -184,55 +196,81 @@ def finiteDifferencesPricer(K, r, sigma, q, S_max, M, T, N, type="call", style="
     grid[:, 0] = zero_S_bc
     grid[-1, :] = maturity_bc
 
-    # display_matrix(grid)
+    if version == "implicit":
 
-    # coefficients
-    a_vec = 0.5 * (r - q) * arange(1, M) * deltaT - 0.5 * (sigma ** 2) * (arange(1, M) ** 2) * deltaT
-    b_vec = 1 + r * deltaT + (sigma ** 2) * (arange(1, M) ** 2) * deltaT
-    c_vec = -0.5 * (r - q) * arange(1, M) * deltaT - 0.5 * (sigma ** 2) * (arange(1, M) ** 2) * deltaT
+        # coefficients
+        a_vec = 0.5 * (r - q) * arange(1, M) * deltaT - 0.5 * (sigma ** 2) * (arange(1, M) ** 2) * deltaT
+        b_vec = 1 + r * deltaT + (sigma ** 2) * (arange(1, M) ** 2) * deltaT
+        c_vec = -0.5 * (r - q) * arange(1, M) * deltaT - 0.5 * (sigma ** 2) * (arange(1, M) ** 2) * deltaT
 
-    # need to solve a sparse linear system for each iteration
-    tri = csc_matrix(np.diag(a_vec[1:], k=-1) + np.diag(b_vec, k=0) + np.diag(c_vec[:-1], k=1))
+        # need to solve a sparse linear system for each iteration
+        tri = csc_matrix(np.diag(a_vec[1:], k=-1) + np.diag(b_vec, k=0) + np.diag(c_vec[:-1], k=1))
 
-    # backwards iteration
-    for i in range(N-1, -1, -1):
+        # backwards iteration
+        for i in range(N-1, -1, -1):
 
-        # offset due to boundary conditions
-        offset = np.zeros(M-1)
-        offset[0] = a_vec[0] * grid[i, 0]
-        offset[-1] = c_vec[-1] * grid[i, M]
-        
-        forward = grid[i+1, 1:M]
+            # offset due to boundary conditions
+            offset = np.zeros(M-1)
+            offset[0] = a_vec[0] * grid[i, 0]
+            offset[-1] = c_vec[-1] * grid[i, M]
+            
+            forward = grid[i+1, 1:M]
 
-        prices_at_iteration = spsolve(tri, forward - offset)
+            prices_at_iteration = spsolve(tri, forward - offset)
 
-        if style == "european":
-            pass
+            if style == "european":
+                pass
 
-        elif style == "american":
-            if type == "put":
-                prices_at_iteration = np.maximum(prices_at_iteration, K - arange(1, M) * deltaS)
-            elif type == "call":
-                prices_at_iteration = np.maximum(prices_at_iteration, arange(1, M) * deltaS - K)
+            elif style == "american":
+                if type == "put":
+                    prices_at_iteration = np.maximum(prices_at_iteration, K - arange(1, M) * deltaS)
+                elif type == "call":
+                    prices_at_iteration = np.maximum(prices_at_iteration, arange(1, M) * deltaS - K)
 
-        grid[i, 1:M] = prices_at_iteration
+            grid[i, 1:M] = prices_at_iteration
 
-    # grid = np.matrix.round(grid, decimals=2); display_matrix(grid)
+    elif version == "explicit":
+
+        # coefficients
+        a_vec = (1 / (1 + r * deltaT)) * (-0.5 * (r-q) * arange(0, M+1) * deltaT + 0.5 * (sigma ** 2) * (arange(0, M+1) ** 2) * deltaT)
+        b_vec = (1 / (1 + r * deltaT)) * (1 - (sigma ** 2) * (arange(0, M+1) ** 2) * deltaT)
+        c_vec = (1 / (1 + r * deltaT)) * (+0.5 * (r-q) * arange(0, M+1) * deltaT + 0.5 * (sigma ** 2) * (arange(0, M+1) ** 2) * deltaT)
+
+        # backwards iteration
+        for i in range(N-1, -1, -1):
+
+            forward = grid[i+1, :]
+            prices_at_iteration = np.zeros(M-1)
+
+            # try to vectorize this loop later
+            for j in range(0, M-1):
+                prices_at_iteration[j] = forward[j] * a_vec[j] + forward[j+1] * b_vec[j+1] + forward[j+2] * c_vec[j+2]
+
+            grid[i, 1:M] = prices_at_iteration
+
+    grid = np.matrix.round(grid, decimals=2); print(grid)
     # plt.plot(np.arange(0, S_max + deltaS, deltaS), grid[:, 0])
     # plt.plot(np.arange(0, S_max + deltaS, deltaS), np.arange(0, S_max + deltaS, deltaS) - K * exp(-r * T))
 
     return arange(0, M+1) * deltaS, grid[0, :]
 
 
+def FiniteDifferencesPricerCrankNicolson(K, r, sigma, q, S_max, M, T, N, type="call", style="european"):
+
+    return
+
+
 def monteCarloPricer(S_0, K, r, sigma, q, T, N, num_trials, style="european", type="put", method="default"):
     """
-    """
+    Monte Carlo pricer
 
-    # sample a path for S(t) in a risk neutral world
-    # calculate the payoff from the derivative
-    # repeat steps 1 and 2
-    # calculate the mean of sample payoffs to get estimate of the expected payoff
-    # discount expected payoff at the risk free rate
+    How it works:
+    - sample a path for S(t) in a risk neutral world
+    - calculate the payoff from the derivative
+    - repeat steps 1 and 2
+    - calculate the mean of sample payoffs to get estimate of the expected payoff
+    - discount expected payoff at the risk free rate
+    """
 
     assert type in ["call", "put"]
     assert style in ["european", "american", "geometric_asian"]
@@ -278,7 +316,7 @@ def monteCarloPricer(S_0, K, r, sigma, q, T, N, num_trials, style="european", ty
         variates = rng.standard_normal((N, num_trials))
         variates[0, :] = 0
 
-        
+        # since the stock price follows geometric brownian motion, it is lognormally distributed
         log_S_t = log(S_0) + ((r - sigma ** 2 / 2) * times)[:, np.newaxis] + sigma * deltaT_sqrt * np.cumsum(variates, axis=0)
 
         # geometric average of stock price
@@ -287,44 +325,27 @@ def monteCarloPricer(S_0, K, r, sigma, q, T, N, num_trials, style="european", ty
         if type == "call":
 
             if method == "default":
-
                 
                 sampled_payoffs = np.maximum(S_ave - K, 0) 
 
             elif method == "antithetic":
                 
-                log_S_t1 = log(S_0) + ((r - sigma ** 2 / 2) * times)[:, np.newaxis] + sigma * deltaT_sqrt * np.cumsum(variates, axis=0)
-                log_S_t2 = log(S_0) + ((r - sigma ** 2 / 2) * times)[:, np.newaxis] + sigma * deltaT_sqrt * np.cumsum(-variates, axis=0)
+                anti = log(S_0) + ((r - sigma ** 2 / 2) * times)[:, np.newaxis] + sigma * deltaT_sqrt * np.cumsum(-variates, axis=0)
+                S_ave_anti = exp((1/T) * np.sum(anti, axis=0) * deltaT)
 
-                # geometric average
-                S_ave1 = exp((1/T) * np.sum(log_S_t1, axis=0) * deltaT)
-                S_ave2 = exp((1/T) * np.sum(log_S_t2, axis=0) * deltaT)
-
-                f1 = np.maximum(S_ave1 - K, 0)
-                f2 = np.maximum(S_ave2 - K, 0)
-
-                sampled_payoffs = (f1 + f2) / 2
+                sampled_payoffs = (np.maximum(S_ave - K, 0) + np.maximum(S_ave_anti - K, 0)) / 2
 
         elif type == "put":
 
             if method == "default":
 
-                # geometric average of stock price
-                S_ave = exp((1/T) * np.sum(log_S_t, axis=0) * deltaT)
                 sampled_payoffs = np.maximum(K - S_ave, 0) 
 
             elif method == "antithetic":
 
-                log_S_t1 = log(S_0) + ((r - sigma ** 2 / 2) * times)[:, np.newaxis] + sigma * deltaT_sqrt * np.cumsum(variates, axis=0)
-                log_S_t2 = log(S_0) + ((r - sigma ** 2 / 2) * times)[:, np.newaxis] + sigma * deltaT_sqrt * np.cumsum(-variates, axis=0)
+                anti = log(S_0) + ((r - sigma ** 2 / 2) * times)[:, np.newaxis] + sigma * deltaT_sqrt * np.cumsum(-variates, axis=0)
+                S_ave_anti = exp((1/T) * np.sum(anti, axis=0) * deltaT)
 
-                # geometric average
-                S_ave1 = exp((1/T) * np.sum(log_S_t1, axis=0) * deltaT)
-                S_ave2 = exp((1/T) * np.sum(log_S_t2, axis=0) * deltaT)
-
-                f1 = np.maximum(K - S_ave1, 0)
-                f2 = np.maximum(K - S_ave2, 0)
-
-                sampled_payoffs = (f1 + f2) / 2
+                sampled_payoffs = (np.maximum(K - S_ave, 0) + np.maximum(K - S_ave_anti, 0)) / 2
 
     return exp(-r*T) * np.mean(sampled_payoffs), np.std(exp(-r*T) * sampled_payoffs)
