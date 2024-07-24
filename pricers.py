@@ -155,6 +155,15 @@ def finiteDifferencesPricer(K, r, sigma, q, S_max, M, T, N, type="call", style="
     assert style in ["european", "american"]
     assert type in ["call", "put"]
 
+    if N == "auto":
+        N = int((sigma ** 2) * (M ** 2) * T) + 1
+        print(f"Number of time grid points selected automatically: N={N}")
+
+    elif N < (sigma ** 2) * (M ** 2) * T and version == "explicit":
+        print(f"Warning: solution may be unstable.",
+              f"Number of time grid points should exceed {(sigma ** 2) * (M ** 2) * T}",
+               "for stability of explicit method")
+        
     deltaT = T / N
     deltaS = S_max / M
 
