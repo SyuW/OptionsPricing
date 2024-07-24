@@ -37,14 +37,14 @@ def testFiniteDifferences(params):
     maturity = params["maturity"]
 
     s, sol = finiteDifferencesPricer(K=strike, r=interest_rate, sigma=volatility, q=dividend_rate,
-                                    S_max=400, M=20, T=maturity, N=10,
+                                    S_max=100, M=100, T=maturity, N=10,
                                     type="call", style="european", version="explicit")
 
     # true solution comes Black-Scholes-Merton formula
     true_sol = blackScholesPricer(s[1:], K=strike, r=interest_rate, sigma=0.40, T=maturity, type="call")
 
     plt.xlabel(r"Initial stock price, $S_0$")
-    plt.ylabel(r"Put option price, $p$")
+    plt.ylabel(r"Option price, $p$")
 
     plt.plot(s, sol, linewidth=3, label="Finite differences", zorder=2)
     plt.plot(s[1:], true_sol, linewidth=3, label="Ground truth", zorder=1)

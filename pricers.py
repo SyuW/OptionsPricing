@@ -229,22 +229,30 @@ def finiteDifferencesPricer(K, r, sigma, q, S_max, M, T, N, type="call", style="
 
             grid[i, 1:M] = prices_at_iteration
 
+    # Broken right now ... trying to fix
     elif version == "explicit":
 
+        j_arr = arange(1, M)
+
         # coefficients
-        a_vec = (1 / (1 + r * deltaT)) * (-0.5 * (r-q) * arange(0, M+1) * deltaT + 0.5 * (sigma ** 2) * (arange(0, M+1) ** 2) * deltaT)
-        b_vec = (1 / (1 + r * deltaT)) * (1 - (sigma ** 2) * (arange(0, M+1) ** 2) * deltaT)
-        c_vec = (1 / (1 + r * deltaT)) * (+0.5 * (r-q) * arange(0, M+1) * deltaT + 0.5 * (sigma ** 2) * (arange(0, M+1) ** 2) * deltaT)
+        a_vec = (1 / (1 + r * deltaT)) * (-0.5 * (r-q) * j_arr * deltaT + 0.5 * (sigma ** 2) * (j_arr ** 2) * deltaT)
+        b_vec = (1 / (1 + r * deltaT)) * (1 - (sigma ** 2) * (j_arr ** 2) * deltaT)
+        c_vec = (1 / (1 + r * deltaT)) * (+0.5 * (r-q) * j_arr * deltaT + 0.5 * (sigma ** 2) * (j_arr ** 2) * deltaT)
+
+        # tridiagonal matrix
+        tri = csc_matrix(np.diag(a_vec[1:], k=-1) + np.diag(b_vec, k=0) + np.diag(c_vec[:-1], k=1))
 
         # backwards iteration
         for i in range(N-1, -1, -1):
+            
+            forward = grid[i+1, 1:M]
 
-            forward = grid[i+1, :]
-            prices_at_iteration = np.zeros(M-1)
-
-            # try to vectorize this loop later
-            for j in range(0, M-1):
-                prices_at_iteration[j] = forward[j] * a_vec[j] + forward[j+1] * b_vec[j+1] + forward[j+2] * c_vec[j+2]
+            # offset due to boundary conditions
+            offset = np.zeros(M-1)
+            offset[0] = a_vec[0] * grid[i, 0]
+            offset[-1] = c_vec[-1] * grid[i, M]
+            
+            prices_at_iteration = tri.dot(forward) + offset
 
             grid[i, 1:M] = prices_at_iteration
 
@@ -273,7 +281,7 @@ def monteCarloPricer(S_0, K, r, sigma, q, T, N, num_trials, style="european", ty
     """
 
     assert type in ["call", "put"]
-    assert style in ["european", "american", "geometric_asian"]
+    assert style in ["european", "american", "geometric_asian", "arithmetic_asian"]
     assert method in ["default", "antithetic", "importance"]
 
     deltaT = T / N
@@ -308,6 +316,10 @@ def monteCarloPricer(S_0, K, r, sigma, q, T, N, num_trials, style="european", ty
                 f1 = np.maximum(K - pricing_func(variates), 0)
                 f2 = np.maximum(K - pricing_func(-variates), 0)
                 sampled_payoffs = (f1 + f2) / 2
+
+    elif style == "arithmetic_asian":
+
+        pass
 
     elif style == "geometric_asian":
 
