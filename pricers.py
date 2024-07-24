@@ -198,10 +198,12 @@ def finiteDifferencesPricer(K, r, sigma, q, S_max, M, T, N, type="call", style="
 
     if version == "implicit":
 
+        j_arr = arange(1, M)
+
         # coefficients
-        a_vec = 0.5 * (r - q) * arange(1, M) * deltaT - 0.5 * (sigma ** 2) * (arange(1, M) ** 2) * deltaT
-        b_vec = 1 + r * deltaT + (sigma ** 2) * (arange(1, M) ** 2) * deltaT
-        c_vec = -0.5 * (r - q) * arange(1, M) * deltaT - 0.5 * (sigma ** 2) * (arange(1, M) ** 2) * deltaT
+        a_vec = +0.5 * (r - q) * j_arr * deltaT - 0.5 * (sigma ** 2) * (j_arr ** 2) * deltaT
+        b_vec = 1 + r * deltaT + (sigma ** 2) * (j_arr ** 2) * deltaT
+        c_vec = -0.5 * (r - q) * j_arr * deltaT - 0.5 * (sigma ** 2) * (j_arr ** 2) * deltaT
 
         # need to solve a sparse linear system for each iteration
         tri = csc_matrix(np.diag(a_vec[1:], k=-1) + np.diag(b_vec, k=0) + np.diag(c_vec[:-1], k=1))
@@ -235,9 +237,9 @@ def finiteDifferencesPricer(K, r, sigma, q, S_max, M, T, N, type="call", style="
         j_arr = arange(1, M)
 
         # coefficients
-        a_vec = (1 / (1 + r * deltaT)) * (-0.5 * (r-q) * j_arr * deltaT + 0.5 * (sigma ** 2) * (j_arr ** 2) * deltaT)
-        b_vec = (1 / (1 + r * deltaT)) * (1 - (sigma ** 2) * (j_arr ** 2) * deltaT)
-        c_vec = (1 / (1 + r * deltaT)) * (+0.5 * (r-q) * j_arr * deltaT + 0.5 * (sigma ** 2) * (j_arr ** 2) * deltaT)
+        a_vec = -0.5 * (r-q) * j_arr * deltaT + 0.5 * (sigma ** 2) * (j_arr ** 2) * deltaT # for f_{i, j-1}
+        b_vec = 1 - r * deltaT - (sigma ** 2) * (j_arr ** 2) * deltaT                      # for f_{i, j} 
+        c_vec = +0.5 * (r-q) * j_arr * deltaT + 0.5 * (sigma ** 2) * (j_arr ** 2) * deltaT # for f_{i, j+1}
 
         # tridiagonal matrix
         tri = csc_matrix(np.diag(a_vec[1:], k=-1) + np.diag(b_vec, k=0) + np.diag(c_vec[:-1], k=1))
@@ -256,16 +258,7 @@ def finiteDifferencesPricer(K, r, sigma, q, S_max, M, T, N, type="call", style="
 
             grid[i, 1:M] = prices_at_iteration
 
-    grid = np.matrix.round(grid, decimals=2); print(grid)
-    # plt.plot(np.arange(0, S_max + deltaS, deltaS), grid[:, 0])
-    # plt.plot(np.arange(0, S_max + deltaS, deltaS), np.arange(0, S_max + deltaS, deltaS) - K * exp(-r * T))
-
     return arange(0, M+1) * deltaS, grid[0, :]
-
-
-def FiniteDifferencesPricerCrankNicolson(K, r, sigma, q, S_max, M, T, N, type="call", style="european"):
-
-    return
 
 
 def monteCarloPricer(S_0, K, r, sigma, q, T, N, num_trials, style="european", type="put", method="default"):

@@ -37,7 +37,7 @@ def testFiniteDifferences(params):
     maturity = params["maturity"]
 
     s, sol = finiteDifferencesPricer(K=strike, r=interest_rate, sigma=volatility, q=dividend_rate,
-                                    S_max=100, M=100, T=maturity, N=10,
+                                    S_max=100, M=20, T=maturity, N=300,
                                     type="call", style="european", version="explicit")
 
     # true solution comes Black-Scholes-Merton formula
