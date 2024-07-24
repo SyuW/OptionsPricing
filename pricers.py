@@ -120,6 +120,13 @@ def binomialPricer(S, K, r, sigma, T, q, n, type="call", style="european", visua
     return price_tree[0][0, 1]
 
 
+def trinomialPricer(S, K, r, sigma, T, q, n, type="call", style="european", visualize=False):
+
+    
+
+    return
+
+
 # use finite differences to solve the Black-Scholes PDE to obtain option price
 def finiteDifferencesPricer(K, r, sigma, q, S_max, M, T, N, type="call", style="european"):
     """
@@ -228,38 +235,96 @@ def monteCarloPricer(S_0, K, r, sigma, q, T, N, num_trials, style="european", ty
     # discount expected payoff at the risk free rate
 
     assert type in ["call", "put"]
-    assert style in ["european", "american", "asian"]
+    assert style in ["european", "american", "geometric_asian"]
     assert method in ["default", "antithetic", "importance"]
 
     deltaT = T / N
     deltaT_sqrt = np.sqrt(T/N)
-    T_sqrt = np.sqrt(T)
-
-    # pricing func
-    pricing_func = lambda eps: S_0 * exp((r - sigma ** 2 / 2) * T + sigma * T_sqrt * eps)
+    T_sqrt = sqrt(T)
 
     # volatility and interest rates are constant
     rng = np.random.default_rng(300)
-    variates = rng.standard_normal(num_trials)
 
-    if type == "put":
+    if style == "european":
 
-        if method == "default":
-            sampled_payoffs = np.maximum(K - pricing_func(variates), 0)
+        # pricing func
+        pricing_func = lambda eps: S_0 * exp((r - sigma ** 2 / 2) * T + sigma * T_sqrt * eps)
+        variates = rng.standard_normal(num_trials)
+        
+        if type == "call":
 
-        elif method == "antithetic":
-            f1 = np.maximum(K - pricing_func(variates), 0)
-            f2 = np.maximum(K - pricing_func(-variates), 0)
-            sampled_payoffs = (f1 + f2) / 2
+            if method == "default":
+                sampled_payoffs = np.maximum(pricing_func(variates) - K, 0)
 
-    elif type == "call":
+            elif method == "antithetic":
+                f1 = np.maximum(pricing_func(variates) - K, 0)
+                f2 = np.maximum(pricing_func(-variates) - K, 0)
+                sampled_payoffs = (f1 + f2) / 2
 
-        if method == "default":
-            sampled_payoffs = np.maximum(pricing_func(variates) - K, 0)
+        elif type == "put":
 
-        elif method == "antithetic":
-            f1 = np.maximum(pricing_func(variates) - K, 0)
-            f2 = np.maximum(pricing_func(-variates) - K, 0)
-            sampled_payoffs = (f1 + f2) / 2
+            if method == "default":
+                sampled_payoffs = np.maximum(K - pricing_func(variates), 0)
+            
+            elif method == "antithetic":
+                f1 = np.maximum(K - pricing_func(variates), 0)
+                f2 = np.maximum(K - pricing_func(-variates), 0)
+                sampled_payoffs = (f1 + f2) / 2
+
+    elif style == "geometric_asian":
+
+        # need to generate price paths
+        times = arange(0, T, deltaT)
+        variates = rng.standard_normal((N, num_trials))
+        variates[0, :] = 0
+
+        
+        log_S_t = log(S_0) + ((r - sigma ** 2 / 2) * times)[:, np.newaxis] + sigma * deltaT_sqrt * np.cumsum(variates, axis=0)
+
+        # geometric average of stock price
+        S_ave = exp((1/T) * np.sum(log_S_t, axis=0) * deltaT)
+
+        if type == "call":
+
+            if method == "default":
+
+                
+                sampled_payoffs = np.maximum(S_ave - K, 0) 
+
+            elif method == "antithetic":
+                
+                log_S_t1 = log(S_0) + ((r - sigma ** 2 / 2) * times)[:, np.newaxis] + sigma * deltaT_sqrt * np.cumsum(variates, axis=0)
+                log_S_t2 = log(S_0) + ((r - sigma ** 2 / 2) * times)[:, np.newaxis] + sigma * deltaT_sqrt * np.cumsum(-variates, axis=0)
+
+                # geometric average
+                S_ave1 = exp((1/T) * np.sum(log_S_t1, axis=0) * deltaT)
+                S_ave2 = exp((1/T) * np.sum(log_S_t2, axis=0) * deltaT)
+
+                f1 = np.maximum(S_ave1 - K, 0)
+                f2 = np.maximum(S_ave2 - K, 0)
+
+                sampled_payoffs = (f1 + f2) / 2
+
+        elif type == "put":
+
+            if method == "default":
+
+                # geometric average of stock price
+                S_ave = exp((1/T) * np.sum(log_S_t, axis=0) * deltaT)
+                sampled_payoffs = np.maximum(K - S_ave, 0) 
+
+            elif method == "antithetic":
+
+                log_S_t1 = log(S_0) + ((r - sigma ** 2 / 2) * times)[:, np.newaxis] + sigma * deltaT_sqrt * np.cumsum(variates, axis=0)
+                log_S_t2 = log(S_0) + ((r - sigma ** 2 / 2) * times)[:, np.newaxis] + sigma * deltaT_sqrt * np.cumsum(-variates, axis=0)
+
+                # geometric average
+                S_ave1 = exp((1/T) * np.sum(log_S_t1, axis=0) * deltaT)
+                S_ave2 = exp((1/T) * np.sum(log_S_t2, axis=0) * deltaT)
+
+                f1 = np.maximum(K - S_ave1, 0)
+                f2 = np.maximum(K - S_ave2, 0)
+
+                sampled_payoffs = (f1 + f2) / 2
 
     return exp(-r*T) * np.mean(sampled_payoffs), np.std(exp(-r*T) * sampled_payoffs)
