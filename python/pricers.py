@@ -33,6 +33,13 @@ def blackScholesPricer(S, K, r, sigma, T, type="call"):
     return option_price
 
 
+def getBlackScholesGreeks(greek):
+
+    assert greek in ["delta", "gamma", "theta", "vega"]
+
+    return
+
+
 def asianOptionPricerExact(S, K, r, sigma, T, type="call"):
     """
     Pricer for geometric Asian options (without early exercise) using exact analytical expressions
@@ -162,7 +169,7 @@ def finiteDifferencesPricer(K, r, sigma, q, S_max, M, T, N, type="call", style="
     elif N < (sigma ** 2) * (M ** 2) * T and version == "explicit":
         print(f"Warning: solution may be unstable.",
               f"Number of time grid points should exceed {(sigma ** 2) * (M ** 2) * T}",
-               "for stability of explicit method")
+               "as necessary condition for stability of explicit method")
         
     deltaT = T / N
     deltaS = S_max / M
@@ -240,15 +247,14 @@ def finiteDifferencesPricer(K, r, sigma, q, S_max, M, T, N, type="call", style="
 
             grid[i, 1:M] = prices_at_iteration
 
-    # Broken right now ... trying to fix
     elif version == "explicit":
 
         j_arr = arange(1, M)
 
         # coefficients
-        a_vec = -0.5 * (r-q) * j_arr * deltaT + 0.5 * (sigma ** 2) * (j_arr ** 2) * deltaT # for f_{i, j-1}
-        b_vec = 1 - r * deltaT - (sigma ** 2) * (j_arr ** 2) * deltaT                      # for f_{i, j} 
-        c_vec = +0.5 * (r-q) * j_arr * deltaT + 0.5 * (sigma ** 2) * (j_arr ** 2) * deltaT # for f_{i, j+1}
+        a_vec = -0.5 * (r-q) * j_arr * deltaT + 0.5 * (sigma ** 2) * (j_arr ** 2) * deltaT 
+        b_vec = 1 - r * deltaT - (sigma ** 2) * (j_arr ** 2) * deltaT                      
+        c_vec = +0.5 * (r-q) * j_arr * deltaT + 0.5 * (sigma ** 2) * (j_arr ** 2) * deltaT
 
         # tridiagonal matrix
         tri = csc_matrix(np.diag(a_vec[1:], k=-1) + np.diag(b_vec, k=0) + np.diag(c_vec[:-1], k=1))
