@@ -118,9 +118,10 @@ def asianOptionPricerExact(S, K, r, sigma, T, type="call"):
     return option_price    
 
 
-def binomialTreePricer(S, K, r, sigma, T, q, n, type="call", style="european", visualize=False):
+def binomialTreePricer(S, K, r, sigma, T, q, n, type="call", style="european", visualize=False, greeks=False):
     """
-    Cox-Ross-Rubinstein (CRR) Binomial tree pricer
+    Cox-Ross-Rubinstein (CRR) Binomial tree pricer.
+    Semantics for indexing a node in tree: price_tree[time][net up moves, stock (0) or option (1) price]
 
     S       : initial stock price
     K       : strike price
@@ -129,6 +130,8 @@ def binomialTreePricer(S, K, r, sigma, T, q, n, type="call", style="european", v
     T       : time to expiry
     q       : continuous dividend yield
     n       : size of tree
+
+    greeks  : compute estimates of Greek letters from tree and return
     """
 
     assert type in ["call", "put"]
@@ -180,7 +183,31 @@ def binomialTreePricer(S, K, r, sigma, T, q, n, type="call", style="european", v
         for i in range(0, n+1):
             print(price_tree[i])
 
-    return price_tree[0][0, 1]
+    if greeks:
+        greeks = {}
+
+        S = price_tree[0][0, 0]
+        f_00 = price_tree[0][0, 1]
+        f_11 = price_tree[1][1, 1]
+        f_10 = price_tree[1][0, 1]
+        f_22 = price_tree[2][2, 1]
+        f_21 = price_tree[2][1, 1]
+        f_20 = price_tree[2][0, 1]
+        h = 0.5 * S * (u ** 2 - d ** 2)
+
+        delta = (f_11 - f_10) / (S * (u - d)) 
+        gamma = ((f_22-f_21)/(S*(u**2-1)) - (f_21-f_20)/(S*(1-d**2))) / h
+        theta = (f_21 - f_00) / (2 * t)
+
+        greeks["delta"] = delta
+        greeks["gamma"] = gamma
+        greeks["theta"] = theta
+
+        return price_tree[0][0, 1], greeks
+
+    else:
+        f_00 = price_tree[0][0, 1]
+        return f_00
 
 
 def trinomialPricer(S, K, r, sigma, T, q, n, type="call", style="european", visualize=False):

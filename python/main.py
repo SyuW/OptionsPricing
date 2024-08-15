@@ -27,8 +27,8 @@ if __name__ == "__main__":
 
     bsm_price = blackScholesPricer(S=stock_price, K=strike_price, r=interest_rate,
                                    sigma=volatility, T=maturity, q=0, type=option_type)
-    bin_price = binomialTreePricer(S=stock_price, K=strike_price, r=interest_rate, 
-                               sigma=volatility, T=maturity, q=0, n=1000, type=option_type)
+    bin_price, bin_greeks = binomialTreePricer(S=stock_price, K=strike_price, r=interest_rate, 
+                                               sigma=volatility, T=maturity, q=0, n=1000, type=option_type, greeks=True)
     
     fd_price = interpolateOptionPrices(stock_price, *finiteDifferencesPricer(K=strike_price, r=interest_rate, sigma=volatility, q=0,
                                                                              S_max=2 * stock_price, M=200, N="auto", T=maturity, type=option_type,
@@ -40,12 +40,21 @@ if __name__ == "__main__":
     ci_lower = mc_price - 1.96 * mc_std / sqrt(trials)
     ci_upper = mc_price + 1.96 * mc_std / sqrt(trials)
 
-    # find the Greeks
+    # find the Greeks using BSM
     delta = getBlackScholesGreeks(S=stock_price, K=strike_price, r=interest_rate, sigma=volatility, T=maturity, q=0, greek="delta", type=option_type)
     gamma = getBlackScholesGreeks(S=stock_price, K=strike_price, r=interest_rate, sigma=volatility, T=maturity, q=0, greek="gamma", type=option_type)
     theta = getBlackScholesGreeks(S=stock_price, K=strike_price, r=interest_rate, sigma=volatility, T=maturity, q=0, greek="theta", type=option_type)
     vega = getBlackScholesGreeks(S=stock_price, K=strike_price, r=interest_rate, sigma=volatility, T=maturity, q=0, greek="vega", type=option_type)
     rho = getBlackScholesGreeks(S=stock_price, K=strike_price, r=interest_rate, sigma=volatility, T=maturity, q=0, greek="rho", type=option_type)
+
+    # calculate the greeks 'manually'
+
+    # finite differences
+    eps = 0.01
+    fd_price_shifted = interpolateOptionPrices(stock_price + 0.01, *finiteDifferencesPricer(K=strike_price, r=interest_rate, sigma=volatility, q=0,
+                                                                             S_max=2 * stock_price, M=200, N="auto", T=maturity, type=option_type,
+                                                                             version="explicit"))
+    fd_delta = (fd_price_shifted - fd_price) / eps
     
     print("-"*50)
     print("OUTPUTS")
@@ -79,3 +88,14 @@ if __name__ == "__main__":
     print(f"Rho:", f"{rho:.6f}")
     print(f"Rho (one percent change in interest rate):", f"{(rho / 100):.6f}")
     print("-"*50)
+
+    print("*")
+    print("*")
+    print("*")
+    print("-"*50)
+    print("Greeks (Numerically!)")
+    print("-"*50)
+    print(f"Delta (from finite differences): {fd_delta}")
+    print(f"Delta (from binomial tree): {bin_greeks['delta']}")
+    print(f"Gamma (from binomial tree): {bin_greeks['gamma']}")
+    print(f"Theta (from binomial tree): {bin_greeks['theta']}")
