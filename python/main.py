@@ -1,33 +1,13 @@
-from pricers import asianOptionPricerExact, binomialTreePricer, blackScholesPricer, \
+from pricers import asianOptionPricerExact, binomialTreePricer, blackScholesPricer, getBlackScholesGreeks, \
                     finiteDifferencesPricer, monteCarloPricer
 
 from numpy import sqrt
-from utils import interpolateOptionPrices
+from utils import interpolateOptionPrices, getInput
 
 from scipy.interpolate import CubicSpline
 import matplotlib.pyplot as plt
 import argparse
 import time
-
-
-def get_input(message, assert_list=[], func=float):
-
-    flag = False
-    while not flag:
-        try:
-            user_input = input(message)
-            user_input = func(user_input)
-            flag = True
-        except ValueError:
-            print("Error: input could not be converted, please try again.")
-        except Exception as e:
-            print("An error occurred:", str(e), ". Please try again.")
-
-    # if user input is a string, need to check that string is valid for later
-    if func == str:
-        assert user_input in assert_list
-
-    return func(user_input)
 
 
 ## Script for freely using any of the pricing engines through command line arguments
@@ -37,13 +17,13 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
 
-    option_type = get_input(message="What type of option are considering? Enter it here: ",
+    option_type = getInput(message="What type of option are considering? Enter it here: ",
                             assert_list=["call", "put"], func=str)
-    stock_price = get_input(message="What is the current stock price? Enter it here: ")
-    strike_price = get_input(message="What is the option's strike price? Enter it here: ")
-    interest_rate = get_input(message="What is the interest rate? Enter it here: ")
-    volatility = get_input(message="What is the volatility? Enter it here: ")
-    maturity = get_input(message="What is the time until maturity? Enter it here: ")
+    stock_price = getInput(message="What is the current stock price? Enter it here: ")
+    strike_price = getInput(message="What is the option's strike price? Enter it here: ")
+    interest_rate = getInput(message="What is the interest rate? Enter it here: ")
+    volatility = getInput(message="What is the volatility? Enter it here: ")
+    maturity = getInput(message="What is the time until maturity? Enter it here: ")
 
     bsm_price = blackScholesPricer(S=stock_price, K=strike_price, r=interest_rate,
                                    sigma=volatility, T=maturity, q=0, type=option_type)
@@ -60,7 +40,42 @@ if __name__ == "__main__":
     ci_lower = mc_price - 1.96 * mc_std / sqrt(trials)
     ci_upper = mc_price + 1.96 * mc_std / sqrt(trials)
 
-    print(f"The Black-Scholes-Merton price for the option is: {bsm_price}.")
-    print(f"The binomial tree price for the option is: {bin_price}.")
-    print(f"The finite differences price for the option is {fd_price}.")
-    print(f"The Monte Carlo price for the option is {mc_price} with a 95% confidence interval of [{ci_lower}, {ci_upper}].")
+    # find the Greeks
+    delta = getBlackScholesGreeks(S=stock_price, K=strike_price, r=interest_rate, sigma=volatility, T=maturity, q=0, greek="delta", type=option_type)
+    gamma = getBlackScholesGreeks(S=stock_price, K=strike_price, r=interest_rate, sigma=volatility, T=maturity, q=0, greek="gamma", type=option_type)
+    theta = getBlackScholesGreeks(S=stock_price, K=strike_price, r=interest_rate, sigma=volatility, T=maturity, q=0, greek="theta", type=option_type)
+    vega = getBlackScholesGreeks(S=stock_price, K=strike_price, r=interest_rate, sigma=volatility, T=maturity, q=0, greek="vega", type=option_type)
+    rho = getBlackScholesGreeks(S=stock_price, K=strike_price, r=interest_rate, sigma=volatility, T=maturity, q=0, greek="rho", type=option_type)
+    
+    print("-"*50)
+    print("OUTPUTS")
+    print("-"*50)
+
+    print("*")
+    print("*")
+    print("*")
+    print("-"*50)
+    print("Prices")
+    print("-"*50)
+    print(f"The Black-Scholes-Merton price for the option is: {bsm_price:.4f}.")
+    print(f"The binomial tree price for the option is: {bin_price:.4f}.")
+    print(f"The finite differences price for the option is {fd_price:.4f}.")
+    print(f"The Monte Carlo price for the option is {mc_price:.4f} with a 95% confidence interval of [{ci_lower:.4f}, {ci_upper:.4f}].")
+    print("-"*50)
+
+    print("*")
+    print("*")
+    print("*")
+    print("-"*50)
+    print("Greeks")
+    print("-"*50)
+    print(f"Delta: {delta:.6f}")
+    print(f"Gamma: {gamma:.6f}")
+    print(f"Theta: {theta:.6f}")
+    print(f"Theta (per calendar day): {(theta / 365):.6f}")
+    print(f"Theta (per trading day): {(theta / 252):.6f}")
+    print(f"Vega: {vega:.6f}")
+    print(f"Vega (one percent change in volatility): {(vega / 100):.6f}")
+    print(f"Rho:", f"{rho:.6f}")
+    print(f"Rho (one percent change in interest rate):", f"{(rho / 100):.6f}")
+    print("-"*50)

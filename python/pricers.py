@@ -62,15 +62,15 @@ def getBlackScholesGreeks(S, K, r, sigma, T, q, greek, type="call"):
             return (norm.pdf(d_1) * exp(-q * T)) / (S * sigma * sqrt(T))
 
         elif greek == "theta":
-            return (-S * norm.pdf(d_1) * sigma * exp(-q * T)) / (2 * sqrt(T)) \
-                    + q * S * norm.pdf(d_1) * exp(-q * T) \
-                    - r * K * exp(-r * T) * norm.cdf(d_2)
+            return -S * norm.pdf(d_1) * sigma * exp(-q * T) / (2 * sqrt(T)) \
+                   + q * S * norm.cdf(d_1) * exp(-q * T) \
+                   - r * K * exp(-r * T) * norm.cdf(d_2)
 
         elif greek == "vega":
             return S * sqrt(T) * norm.pdf(d_1) * exp(-q * T)
         
         elif greek == "rho":
-            return K * T * exp(-r * T) * norm.pdf(d_2)
+            return K * T * exp(-r * T) * norm.cdf(d_2)
 
     elif type == "put":
 
@@ -89,7 +89,7 @@ def getBlackScholesGreeks(S, K, r, sigma, T, q, greek, type="call"):
             return S * sqrt(T) * norm.pdf(d_1) * exp(-q * T)
 
         elif greek == "rho":
-            return - K * T * exp(-r * T) * norm.cdf(-d_2)
+            return -K * T * exp(-r * T) * norm.cdf(-d_2)
 
 
 def asianOptionPricerExact(S, K, r, sigma, T, type="call"):
