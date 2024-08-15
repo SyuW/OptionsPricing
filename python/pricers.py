@@ -9,7 +9,7 @@ from scipy.interpolate import CubicSpline
 
 
 # Black-Scholes analytical pricing formula for european options
-def blackScholesPricer(S, K, r, sigma, T, type="call"):
+def blackScholesPricer(S, K, r, sigma, T, q, type="call"):
     """
     Pricer for european options using the classic Black-Scholes-Merton formulas
 
@@ -18,17 +18,18 @@ def blackScholesPricer(S, K, r, sigma, T, type="call"):
     r       : risk-free interest rate
     sigma   : volatility
     T       : time to expiry
+    q       : continuous dividend yield
     """
 
     assert type in ["call", "put"]
 
-    d_1 = (log(S / K) + (r + sigma ** 2 / 2) * T) / (sigma * sqrt(T))
-    d_2 = (log(S / K) + (r - sigma ** 2 / 2) * T) / (sigma * sqrt(T))
+    d_1 = (log(S / K) + (r - q + sigma ** 2 / 2) * T) / (sigma * sqrt(T))
+    d_2 = (log(S / K) + (r - q - sigma ** 2 / 2) * T) / (sigma * sqrt(T))
 
     if type == "call":
-        option_price = S * norm.cdf(d_1) - K * exp(-r * T) * norm.cdf(d_2)
+        option_price = S * exp(-q * T) * norm.cdf(d_1) - K * exp(-r * T) * norm.cdf(d_2)
     elif type == "put":
-        option_price = K * exp(-r * T) * norm.cdf(-d_2) - S * norm.cdf(-d_1)
+        option_price = K * exp(-r * T) * norm.cdf(-d_2) - S * exp(-q * T) * norm.cdf(-d_1)
 
     return option_price
 
@@ -117,7 +118,7 @@ def asianOptionPricerExact(S, K, r, sigma, T, type="call"):
     return option_price    
 
 
-def binomialPricer(S, K, r, sigma, T, q, n, type="call", style="european", visualize=False):
+def binomialTreePricer(S, K, r, sigma, T, q, n, type="call", style="european", visualize=False):
     """
     Cox-Ross-Rubinstein (CRR) Binomial tree pricer
 
@@ -215,11 +216,11 @@ def finiteDifferencesPricer(K, r, sigma, q, S_max, M, T, N, type="call", style="
 
     if N == "auto":
         N = int((sigma ** 2) * (M ** 2) * T) + 1
-        print(f"Number of time grid points selected automatically: N={N}")
+        print(f"FDPricer: Number of time grid points selected automatically: N={N} to fulfill stability condition.")
 
     elif N < (sigma ** 2) * (M ** 2) * T and version == "explicit":
-        print(f"Warning: solution may be unstable.",
-              f"Number of time grid points should exceed {(sigma ** 2) * (M ** 2) * T}",
+        print(f"FDPricer::Warning: solution may be unstable.",
+              f"FdPricer: Number of time grid points should exceed {(sigma ** 2) * (M ** 2) * T}",
                "as necessary condition for stability of explicit method")
         
     deltaT = T / N
