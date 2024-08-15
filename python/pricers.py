@@ -33,11 +33,62 @@ def blackScholesPricer(S, K, r, sigma, T, type="call"):
     return option_price
 
 
-def getBlackScholesGreeks(greek):
+def getBlackScholesGreeks(S, K, r, sigma, T, q, greek, type="call"):
+    """
+    Compute the Greek letters for European options using the analytical
+    Black-Scholes-Merton formulas
 
-    assert greek in ["delta", "gamma", "theta", "vega"]
+    S       : stock price
+    K       : strike price
+    r       : risk-free interest rate
+    sigma   : volatility
+    T       : time to maturity
+    q       : continuous dividend yield
+    """
 
-    return
+    assert type in ["call", "put"]
+    assert greek in ["delta", "gamma", "theta", "vega", "rho"]
+
+    d_1 = (log(S / K) + (r + sigma ** 2 / 2) * T) / (sigma * sqrt(T))
+    d_2 = (log(S / K) + (r - sigma ** 2 / 2) * T) / (sigma * sqrt(T))
+
+    if type == "call":
+
+        if greek == "delta":
+            return exp(-q * T) * norm.cdf(d_1)
+
+        elif greek == "gamma":
+            return (norm.pdf(d_1) * exp(-q * T)) / (S * sigma * sqrt(T))
+
+        elif greek == "theta":
+            return (-S * norm.pdf(d_1) * sigma * exp(-q * T)) / (2 * sqrt(T)) \
+                    + q * S * norm.pdf(d_1) * exp(-q * T) \
+                    - r * K * exp(-r * T) * norm.cdf(d_2)
+
+        elif greek == "vega":
+            return S * sqrt(T) * norm.pdf(d_1) * exp(-q * T)
+        
+        elif greek == "rho":
+            return K * T * exp(-r * T) * norm.pdf(d_2)
+
+    elif type == "put":
+
+        if greek == "delta":
+            return exp(-q * T) * (norm.cdf(d_1) - 1)
+
+        elif greek == "gamma":
+            return (norm.pdf(d_1) * exp(-q * T)) / (S * sigma * sqrt(T))
+
+        elif greek == "theta":
+            return (-S * norm.pdf(d_1) * sigma * exp(-q * T)) / (2 * sqrt(T)) \
+                    - q * S * norm.cdf(-d_1) * exp(-q * T) \
+                    + r * K * exp(-r * T) * norm.cdf(-d_2)
+
+        elif greek == "vega":
+            return S * sqrt(T) * norm.pdf(d_1) * exp(-q * T)
+
+        elif greek == "rho":
+            return - K * T * exp(-r * T) * norm.cdf(-d_2)
 
 
 def asianOptionPricerExact(S, K, r, sigma, T, type="call"):
