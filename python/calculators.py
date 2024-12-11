@@ -1,7 +1,7 @@
 import numpy as np
 from numpy import sqrt, exp, array, arange, log
 import matplotlib.pyplot as plt
-
+from scipy.stats import norm
 
 # Black-Scholes analytical pricing formula for european options
 def blackScholesPricer(S, K, r, sigma, T, q, type="call"):

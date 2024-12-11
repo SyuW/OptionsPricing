@@ -52,6 +52,11 @@ def getInput(message, assert_list=[], func=float):
     return func(user_input)
 
 
+# helper function for formatting MC results into `value (error)`
+def getResultFromPayoffs(payoffs):
+    return f"{np.average(payoffs)} ({np.std(payoffs) / np.sqrt(len(payoffs))})"
+
+
 # write all tests here
 if __name__ == "__main__":
     print(roundClosestPower(63, 8))
