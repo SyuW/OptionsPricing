@@ -1,10 +1,12 @@
-from pricers import asianOptionPricerExact, binomialTreePricer, blackScholesPricer, getBlackScholesGreeks, \
+from python.calculators import asianOptionPricerExact, binomialTreePricer, blackScholesPricer, getBlackScholesGreeks, \
                     finiteDifferencesPricer, monteCarloPricer
+from python.fd import finiteDifferencesPricer
+
 
 from numpy import sqrt
+from scipy.stats import norm
 from utils import interpolateOptionPrices, getInput
 
-from scipy.interpolate import CubicSpline
 import matplotlib.pyplot as plt
 import argparse
 import time
@@ -30,10 +32,6 @@ if __name__ == "__main__":
     bin_price, bin_greeks = binomialTreePricer(S=stock_price, K=strike_price, r=interest_rate, 
                                                sigma=volatility, T=maturity, q=0, n=1000, type=option_type, greeks=True)
     
-    fd_price = interpolateOptionPrices(stock_price, *finiteDifferencesPricer(K=strike_price, r=interest_rate, sigma=volatility, q=0,
-                                                                             S_max=2 * stock_price, M=200, N="auto", T=maturity, type=option_type,
-                                                                             version="explicit"))
-    
     trials = 10000000
     mc_price, mc_std = monteCarloPricer(S_0=stock_price, K=strike_price, r=interest_rate,
                                         sigma=volatility, q=0, T=maturity, N=1000, num_trials=trials, type=option_type, method="antithetic")
@@ -50,8 +48,11 @@ if __name__ == "__main__":
     # calculate the greeks 'manually'
 
     # finite differences
-    eps = 0.01
-    fd_price_shifted = interpolateOptionPrices(stock_price + 0.01, *finiteDifferencesPricer(K=strike_price, r=interest_rate, sigma=volatility, q=0,
+    eps = 0.001
+    fd_price = interpolateOptionPrices(stock_price, *finiteDifferencesPricer(K=strike_price, r=interest_rate, sigma=volatility, q=0,
+                                                                            S_max=2 * stock_price, M=200, N="auto", T=maturity, type=option_type,
+                                                                            version="explicit"))
+    fd_price_shifted = interpolateOptionPrices(stock_price + eps, *finiteDifferencesPricer(K=strike_price, r=interest_rate, sigma=volatility, q=0,
                                                                              S_max=2 * stock_price, M=200, N="auto", T=maturity, type=option_type,
                                                                              version="explicit"))
     fd_delta = (fd_price_shifted - fd_price) / eps
@@ -68,7 +69,7 @@ if __name__ == "__main__":
     print("-"*50)
     print(f"The Black-Scholes-Merton price for the option is: {bsm_price:.4f}.")
     print(f"The binomial tree price for the option is: {bin_price:.4f}.")
-    print(f"The finite differences price for the option is {fd_price:.4f}.")
+    # print(f"The finite differences price for the option is {fd_price:.4f}.")
     print(f"The Monte Carlo price for the option is {mc_price:.4f} with a 95% confidence interval of [{ci_lower:.4f}, {ci_upper:.4f}].")
     print("-"*50)
 

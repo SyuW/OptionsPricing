@@ -1,4 +1,4 @@
-from pricers import asianOptionPricerExact, blackScholesPricer, finiteDifferencesPricer, monteCarloPricer
+from python.calculators import asianOptionPricerExact, blackScholesPricer, finiteDifferencesPricer, monteCarloPricer
 import matplotlib.pyplot as plt
 import argparse
 
@@ -43,7 +43,9 @@ def testFiniteDifferences(params):
                                      type=option_type, style="european", version="implicit")
 
     # true solution comes Black-Scholes-Merton formula
-    true_sol = blackScholesPricer(s[1:], K=strike, r=interest_rate, sigma=volatility, T=maturity, type=option_type)
+    true_sol = blackScholesPricer(s[1:], K=strike, r=interest_rate, sigma=volatility, q=dividend_rate, T=maturity, type=option_type)
+
+    plt.figure(num="Finite Differences pricing engine result")
 
     plt.xlabel(r"Initial stock price, $S_0$")
     plt.ylabel(r"Option price, $p$")
@@ -88,5 +90,5 @@ if __name__ == "__main__":
         "type": "put"
     }
 
-    testMonteCarlo(test_params_1)
-    # testFiniteDifferences(test_params_2)
+    # testMonteCarlo(test_params_1)
+    testFiniteDifferences(test_params_1)

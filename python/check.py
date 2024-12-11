@@ -1,6 +1,6 @@
 from numpy import sqrt
 
-from pricers import blackScholesPricer, binomialTreePricer, finiteDifferencesPricer, monteCarloPricer
+from python.calculators import blackScholesPricer, binomialTreePricer, finiteDifferencesPricer, monteCarloPricer
 from utils import getInput, interpolateOptionPrices
 
 
